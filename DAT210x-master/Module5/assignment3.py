@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import timedelta
 import matplotlib.pyplot as plt
 import matplotlib
+from sklearn.cluster import KMeans
 
 matplotlib.style.use('ggplot') # Look Pretty
 
@@ -38,7 +39,7 @@ def clusterWithFewestSamples(model):
 
 def doKMeans(data, clusters=0):
   #
-  # TODO: Be sure to only feed in Lat and Lon coordinates to the KMeans algo, since none of the other
+  # Be sure to only feed in Lat and Lon coordinates to the KMeans algo, since none of the other
   # data is suitable for your purposes. Since both Lat and Lon are (approximately) on the same scale,
   # no feature scaling is required. Print out the centroid locations and add them onto your scatter
   # plot. Use a distinguishable marker and color.
@@ -48,28 +49,31 @@ def doKMeans(data, clusters=0):
   # here, which will be a SKLearn K-Means model for this to work.
   #
   # .. your code here ..
+  model = KMeans(n_clusters=clusters)
+  model.fit(data.filter(items=['TowerLat','TowerLon']))
   return model
 
 
 
 #
-# TODO: Load up the dataset and take a peek at its head and dtypes.
+# Load up the dataset and take a peek at its head and dtypes.
 # Convert the date using pd.to_datetime, and the time using pd.to_timedelta
 #
 # .. your code here ..
-
-
+df = pd.read_csv('Datasets/CDR.csv')
+df.CallDate = pd.to_datetime(df.CallDate)
+df.CallTime = pd.to_timedelta(df.CallTime)
 
 
 
 #
-# TODO: Create a unique list of of the phone-number values (users) stored in the
+# Create a unique list of of the phone-number values (users) stored in the
 # "In" column of the dataset, and save it to a variable called `unique_numbers`.
 # Manually check through unique_numbers to ensure the order the numbers appear is
 # the same order they appear (uniquely) in your dataset:
 #
 # .. your code here ..
-
+unique_numbers = df.In.unique()
 
 #
 # INFO: The locations map above should be too "busy" to really wrap your head around. This
@@ -88,21 +92,21 @@ def doKMeans(data, clusters=0):
 #   3. They probably spend time commuting between work and home everyday
 
 
+user_num = 8
 
-
-print "\n\nExamining person: ", 0
+print "\n\nExamining person: ", user_num
 # 
-# TODO: Create a slice called user1 that filters to only include dataset records where the
+# Create a slice called user1 that filters to only include dataset records where the
 # "In" feature (user phone number) is equal to the first number on your unique list above
 #
 # .. your code here ..
-
+user1 = df[df.In == unique_numbers[user_num]]
 
 #
-# TODO: Alter your slice so that it includes only Weekday (Mon-Fri) values.
+# Alter your slice so that it includes only Weekday (Mon-Fri) values.
 #
 # .. your code here ..
-
+user1 = user1[(user1.DOW != 'Sat') & (user1.DOW != 'Sun')]
 
 #
 # TODO: The idea is that the call was placed before 5pm. From Midnight-730a, the user is
@@ -111,13 +115,16 @@ print "\n\nExamining person: ", 0
 # So the assumption is that most of the time is spent either at work, or in 2nd, at home.
 #
 # .. your code here ..
-
+user1 = user1[user1.CallTime < '17:00:00']
 
 #
 # TODO: Plot the Cell Towers the user connected to
 #
 # .. your code here ..
-
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.scatter(user1.TowerLon,user1.TowerLat, c='g', marker='o', alpha=0.2)
+ax.set_title('Weekday Calls (<5pm)')
 
 
 #
@@ -127,7 +134,7 @@ print "\n\nExamining person: ", 0
 # sweep up the annoying outliers and not-home, not-work travel occasions. the other two will zero in
 # on the user's approximate home location and work locations. Or rather the location of the cell
 # tower closest to them.....
-model = doKMeans(user1, 3)
+model = doKMeans(user1, 5)
 
 
 #
@@ -147,4 +154,4 @@ print "    Its Waypoint Time: ", midWaySamples.CallTime.mean()
 ax.scatter(model.cluster_centers_[:,1], model.cluster_centers_[:,0], s=169, c='r', marker='x', alpha=0.8, linewidths=2)
 #
 # Then save the results:
-showandtell('Weekday Calls Centroids')  # Comment this line out when you're ready to proceed
+# showandtell('Weekday Calls Centroids')  # Comment this line out when you're ready to proceed

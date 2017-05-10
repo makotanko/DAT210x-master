@@ -1,7 +1,9 @@
 import pandas as pd
-
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.cm as cm
+from sklearn.cluster import KMeans
 
 matplotlib.style.use('ggplot') # Look Pretty
 
@@ -19,31 +21,33 @@ def showandtell(title=None):
 
 
 #
-# TODO: Load up the dataset and take a peek at its head
+#  Load up the dataset and take a peek at its head
 # Convert the date using pd.to_datetime, and the time using pd.to_timedelta
 #
 # .. your code here ..
-
+df = pd.read_csv('Datasets/CDR.csv')
+df.CallDate = pd.to_datetime(df.CallDate)
+df.CallTime = pd.to_timedelta(df.CallTime)
 
 #
-# TODO: Get a distinct list of "In" phone numbers (users) and store the values in a
+#  Get a distinct list of "In" phone numbers (users) and store the values in a
 # regular python list.
 # Hint: https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.tolist.html
 #
 # .. your code here ..
-
+in_numbers = df.In.unique().tolist()
 
 # 
-# TODO: Create a slice called user1 that filters to only include dataset records where the
+#  Create a slice called user1 that filters to only include dataset records where the
 # "In" feature (user phone number) is equal to the first number on your unique list above;
 # that is, the very first number in the dataset
 #
 # .. your code here ..
-
+user1 = df[df.In == in_numbers[0]]
 
 # INFO: Plot all the call locations
 user1.plot.scatter(x='TowerLon', y='TowerLat', c='gray', alpha=0.1, title='Call Locations')
-showandtell()  # Comment this line out when you're ready to proceed
+#showandtell()  # Comment this line out when you're ready to proceed
 
 
 #
@@ -65,11 +69,11 @@ showandtell()  # Comment this line out when you're ready to proceed
 
 
 #
-# TODO: Add more filters to the user1 slice you created. Add bitwise logic so that you're
+#  Add more filters to the user1 slice you created. Add bitwise logic so that you're
 # only examining records that came in on weekends (sat/sun).
 #
 # .. your code here ..
-
+user1 = user1[(user1.DOW == 'Sat') | (user1.DOW == 'Sun')]
 
 #
 # TODO: Further filter it down for calls that are came in either before 6AM OR after 10pm (22:00:00).
@@ -80,7 +84,7 @@ showandtell()  # Comment this line out when you're ready to proceed
 # slice, print out its length:
 #
 # .. your code here ..
-
+user1 = user1[(user1.CallTime < '06:00:00') | (user1.CallTime > '22:00:00')]
 
 #
 # INFO: Visualize the dataframe with a scatter plot as a sanity check. Since you're familiar
@@ -96,7 +100,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter(user1.TowerLon,user1.TowerLat, c='g', marker='o', alpha=0.2)
 ax.set_title('Weekend Calls (<6am or >10p)')
-showandtell()  # TODO: Comment this line out when you're ready to proceed
+#showandtell()  # Comment this line out when you're ready to proceed
 
 
 
@@ -115,7 +119,8 @@ showandtell()  # TODO: Comment this line out when you're ready to proceed
 # Hint: Make sure you graph the CORRECT coordinates. This is part of your domain expertise.
 #
 # .. your code here ..
-
+model = KMeans(n_clusters=2)
+model.fit(user1.filter(items=['TowerLat','TowerLon']))
 
 showandtell()  # TODO: Comment this line out when you're ready to proceed
 
@@ -127,3 +132,25 @@ showandtell()  # TODO: Comment this line out when you're ready to proceed
 #
 # .. your code here ..
 
+# Generate iterable of colors for plotting
+colors = iter(cm.rainbow(np.linspace(0,1,len(in_numbers))))
+fig = plt.figure()
+ax = fig.add_subplot(111)
+
+for user in in_numbers:
+    user_data = df[df.In == user]
+    # Use only weekend night data (most likely to be home)
+    user_data = user_data[(user_data.DOW == 'Sat') 
+                            | (user_data.DOW == 'Sun')]
+    user_data = user_data[(user_data.CallTime < '06:00:00') 
+                            | (user_data.CallTime > '22:00:00')]
+    # Plot filtered data
+    cur_color = next(colors)   
+    ax.scatter(user_data.TowerLon,user_data.TowerLat, c=cur_color, marker='o', alpha=0.2)
+    ax.set_title('Weekend Calls (<6am or >10p)')
+    # Perform KMeans clustering and plot onto filtered data plot
+    model = KMeans(n_clusters=2)
+    model.fit(user_data.filter(items=['TowerLat','TowerLon']))
+    centroids = model.cluster_centers_
+    print(centroids)
+    ax.scatter(centroids[:,1],centroids[:,0], c=cur_color, marker='x')
